@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Planner</title>
+  <style>
+    :root {
+      --bg:#f5f7fb;
+      --card:#fff;
+      --primary:#2f5fd3;
+      --text:#2d2d3a;
+      --accent:#27ae60;
+      --danger:#e74c3c;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    .app{max-width:900px;margin:2rem auto;padding:0 1rem}
+    h1{text-align:center;color:var(--primary)}
+    .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:1rem;margin-bottom:1rem}
+    form{display:grid;gap:.75rem}
+    input,select,textarea{width:100%;padding:.65rem;border:1px solid #ccd5e8;border-radius:8px;font-size:1rem}
+    button{border:0;border-radius:8px;padding:.75rem;font-size:1rem;color:#fff;cursor:pointer;background:var(--primary)}
+    .task-list{list-style:none;padding:0; margin:0}
+    .task-item{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;border-top:1px solid #eef2f8;padding:.65rem 0}
+    .task-item:first-child{border-top:0}
+    .task-content{display:flex;flex-direction:column;gap:.2rem}
+    .task-meta{font-size:.85rem;color:#667085}
+    .task-actions{display:flex;gap:.4rem}
+    .task-actions button{background:#556cd8;padding:.4rem .6rem;border-radius:6px}
+    .task-actions button.delete{background:var(--danger)}
+    .badge{padding:.2rem .6rem;border-radius:999px;font-size:.75rem;color:#fff}
+    .badge.high{background:#d64545}
+    .badge.medium{background:#e39d13}
+    .badge.low{background:#27ae60}
+    @media (max-width:600px){.task-item{grid-template-columns:1fr;}.task-actions{justify-content:flex-start}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>Study Planner</h1>
+      <p>Quickly add tasks, set dates, priorities, and mark completion.</p>
+      <form id="taskForm">
+        <input required id="title" placeholder="Task title" />
+        <textarea required id="notes" rows="2" placeholder="Notes / subject"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+          <input required type="date" id="dueDate" />
+          <select id="priority" required>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+          </select>
+          <input type="time" id="dueTime" />
+        </div>
+        <button type="submit">Add Task</button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Upcoming Study Tasks</h2>
+      <ul id="taskList" class="task-list"></ul>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('taskForm');
+    const list = document.getElementById('taskList');
+    const STORAGE_KEY = 'studyPlannerTasks';
+
+    let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const priorityClass = p => p.toLowerCase();
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      render();
+    }
+
+    function render() {
+      list.innerHTML = tasks.length ? '' : '<li style="padding:.75rem;color:#667085">No tasks yet. Add one above!</li>';
+      tasks
+        .sort((a,b)=>new Date(a.dueDate+a.dueTime) - new Date(b.dueDate+b.dueTime))
+        .forEach((task, idx)=>{
+          const li = document.createElement('li');
+          li.className = 'task-item';
+
+          const badge = `<span class='badge ${priorityClass(task.priority)}'>${task.priority}</span>`;
+          const dateText = task.dueDate + (task.dueTime ? ' at '+task.dueTime : '');
+
+          li.innerHTML = `
+            <div class='task-content'>
+              <strong>${task.done ? '✅ ' : ''}${task.title}</strong> ${badge}
+              <div class='task-meta'>${task.notes} • ${dateText}</div>
+            </div>
+            <div class='task-actions'>
+              <button type='button' data-action='toggle' data-index='${idx}'>${task.done ? 'Undo' : 'Complete'}</button>
+              <button type='button' class='delete' data-action='delete' data-index='${idx}'>Delete</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const task = {
+        title: document.getElementById('title').value.trim(),
+        notes: document.getElementById('notes').value.trim(),
+        dueDate: document.getElementById('dueDate').value,
+        dueTime: document.getElementById('dueTime').value,
+        priority: document.getElementById('priority').value,
+        done: false,
+      };
+      tasks.push(task);
+      form.reset();
+      save();
+    });
+
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const index = Number(btn.dataset.index);
+      if (action === 'delete') {
+        tasks.splice(index,1);
+        save();
+      } else if (action === 'toggle') {
+        tasks[index].done = !tasks[index].done;
+        save();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
